@@ -1,0 +1,14 @@
+# clickhouse-docker/docker-compose.yml
+version: '3.8'
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse-server
+    ports:
+      - "8123:8123"   # HTTP interface (used for queries via REST)
+      - "9000:9000"   # Native client port
+    environment:
+      - CLICKHOUSE_DB=default
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
