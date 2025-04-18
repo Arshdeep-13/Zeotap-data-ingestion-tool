@@ -1,7 +1,6 @@
 "use client";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   AbsoluteContainer,
@@ -78,7 +77,6 @@ const AnimatedLink = ({
   href?: string;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const pathname = usePathname();
 
   return (
     <Div

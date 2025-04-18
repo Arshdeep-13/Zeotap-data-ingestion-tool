@@ -3,22 +3,22 @@
 import { useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import Cookies from "universal-cookie";
+import Loading from "../components/Loading";
 
-const UploadPage = () => {
-  const [dragOver, setDragOver] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [table, setTable] = useState("test2");
+const UploadPage: React.FC = () => {
+  const [dragOver, setDragOver] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const cookie = new Cookies();
 
-  const handleDrop = (event: any) => {
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setDragOver(false);
     const files = event.dataTransfer.files;
     if (files.length) uploadFile(files[0]);
   };
 
-  const handleFileChange = (event: any) => {
-    const file = event.target.files[0];
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event?.target?.files ? event.target.files[0] : null;
     if (file) uploadFile(file);
   };
 
@@ -26,7 +26,7 @@ const UploadPage = () => {
     setLoading(true);
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("table", table);
+    formData.append("table", "default");
 
     fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/upload`, {
       method: "POST",
@@ -43,13 +43,17 @@ const UploadPage = () => {
           toast.error(data.message || "❌ Upload failed.");
         }
       })
-      .catch(() => {
-        toast.error("❌ Error uploading file.");
+      .catch((err: unknown) => {
+        if (err instanceof Error) {
+          toast.error(err.message);
+        } else {
+          toast.error("❌ Error uploading file.");
+        }
       })
       .finally(() => setLoading(false));
   };
 
-  const handleDragOver = (event: any) => {
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
     setDragOver(true);
@@ -62,14 +66,15 @@ const UploadPage = () => {
   return (
     <div className="flex flex-col justify-center items-center gap-6 pt-8 h-screen px-4">
       <Toaster position="top-center" />
+      {loading && <Loading />}
       <h2 className="text-2xl font-bold text-center dark:text-white">
         📤 Upload a CSV File to ClickHouse
       </h2>
 
       <span className="w-full bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 px-6 py-4 text-sm md:text-base text-center">
-        ⚠️ Please ensure you’re connected to ClickHouse before uploading. We
-        will auto-create the table if it doesn't exist, or append data to it if
-        it does.
+        ⚠️ Please ensure you&#39;re connected to ClickHouse before uploading. We
+        will auto-create the table if it doesn&#39;t exist or append data to it
+        if it does.
       </span>
 
       <form onSubmit={(e) => e.preventDefault()} encType="multipart/form-data">

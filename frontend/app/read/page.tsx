@@ -12,19 +12,21 @@ import {
   getKeyValue,
   Pagination,
 } from "@heroui/react";
+import type { Key } from "@react-types/shared";
+import type { Selection } from "@nextui-org/react";
 
-const QueryExecutorPage = () => {
-  const [databases, setDatabases] = useState([]);
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const QueryExecutorPage: React.FC = () => {
+  const [databases, setDatabases] = useState<{ name: string }[]>([]);
+  const [query, setQuery] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
   const [queryData, setQueryData] = useState([]);
-  const [curDatabase, setCurDatabase] = useState("");
-  const [tableView, setTableView] = useState(false);
-  const [selectedKeys, setSelectedKeys] = useState<any>(new Set([]));
-  const [columns, setColumns] = useState<any>([]);
-  const [rows, setRows] = useState<any>([]);
-  const [page, setPage] = useState(1);
+  const [curDatabase, setCurDatabase] = useState<string>("");
+  const [tableView, setTableView] = useState<boolean>(false);
+  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set<Key>());
+  const [columns, setColumns] = useState<{ key: string; label: string }[]>([]);
+  const [rows, setRows] = useState([]);
+  const [page, setPage] = useState<number>(1);
   const rowsPerPage = 5;
 
   const pages = Math.ceil(rows.length / rowsPerPage);
@@ -50,8 +52,12 @@ const QueryExecutorPage = () => {
 
         const result = await response.json();
         setDatabases(result?.data || []);
-      } catch (error: any) {
-        setError(error);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError("unknown error");
+        }
       } finally {
         setLoading(false);
       }
@@ -81,13 +87,20 @@ const QueryExecutorPage = () => {
           Object.keys(result?.data[0] || {}).map((key) => ({ key, label: key }))
         );
         setRows(
-          result?.data.map((item: any, idx: number) => ({ key: idx, ...item }))
+          result?.data.map((item: Record<string, unknown>, idx: number) => ({
+            key: idx,
+            ...item,
+          }))
         );
       } else {
         setTableView(false);
       }
-    } catch (error: any) {
-      setError(error.message || "Something went wrong");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("unknown error");
+      }
     } finally {
       setLoading(false);
     }
@@ -95,15 +108,21 @@ const QueryExecutorPage = () => {
 
   const handleExportData = () => {
     const selectedArray = Array.from(selectedKeys);
-    const columnArr = columns.map((col: any) => col.label);
+    const columnArr = columns.map((col: { label: string }) => col.label);
     const csvHeader = columnArr.join(",") + "\n";
 
     const csvRows = (
       selectedArray.length > 0
-        ? rows.filter((row: any) => selectedArray.includes(row.key.toString()))
+        ? rows.filter((row: { key: string }) =>
+            selectedArray.includes(row.key.toString())
+          )
         : rows
-    ).map((row: any) =>
-      columnArr.map((col: any) => JSON.stringify(row[col] ?? "")).join(",")
+    ).map((row: unknown) =>
+      columnArr
+        .map((col: string) =>
+          JSON.stringify((row as Record<string, unknown>)[col] ?? "")
+        )
+        .join(",")
     );
 
     const csvContent = csvHeader + csvRows.join("\n");
@@ -138,7 +157,7 @@ const QueryExecutorPage = () => {
               <option className="placeholder:text-gray-400 bg-black" value="">
                 Select DB
               </option>
-              {databases.map((val: any, idx) => (
+              {databases.map((val: { name: string }, idx: number) => (
                 <option
                   className="bg-black placeholder:text-gray-400"
                   value={val.name}
@@ -232,12 +251,12 @@ const QueryExecutorPage = () => {
                 }
               >
                 <TableHeader columns={columns}>
-                  {(column: any) => (
+                  {(column: { key: string; label: string }) => (
                     <TableColumn key={column.key}>{column.label}</TableColumn>
                   )}
                 </TableHeader>
                 <TableBody items={items}>
-                  {(item: any) => (
+                  {(item: { key: number; [key: string]: unknown }) => (
                     <TableRow key={item.key}>
                       {(columnKey) => (
                         <TableCell>{getKeyValue(item, columnKey)}</TableCell>

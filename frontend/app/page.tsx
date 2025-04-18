@@ -1,6 +1,6 @@
 import FeaturesSection from "./components/FeaturesSection";
 
-const page = () => {
+const page: React.FC = () => {
   return (
     <>
       <FeaturesSection />

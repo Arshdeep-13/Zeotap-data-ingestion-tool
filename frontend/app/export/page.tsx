@@ -12,17 +12,19 @@ import {
   getKeyValue,
   Pagination,
 } from "@heroui/react";
+import toast from "react-hot-toast";
+import type { Key } from "@react-types/shared";
+import type { Selection } from "@nextui-org/react";
 
-const page = () => {
-  const [data, setData] = useState<any>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [tableData, setTableData] = useState([]);
-  const [toggler, setToggler] = useState(false);
-  const [rows, setRows] = useState<any>([]);
-  const [columns, setColumns] = useState<any>([]);
-  const [selectedKeys, setSelectedKeys] = useState<any>(new Set([]));
-  const [page, setPage] = useState(1);
+const Page: React.FC = () => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+  const [toggler, setToggler] = useState<boolean>(false);
+  const [rows, setRows] = useState([]);
+  const [columns, setColumns] = useState<{ key: string; label: string }[]>([]);
+  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set<Key>());
+  const [page, setPage] = useState<number>(1);
   const rowsPerPage = 5;
 
   const pages = Math.ceil(rows.length / rowsPerPage);
@@ -55,8 +57,12 @@ const page = () => {
         }
         const result = await response.json();
         setData(result?.tables);
-      } catch (error: any) {
-        setError(error);
+      } catch (error: unknown) {
+        if (error instanceof Error) {
+          toast.error("❌ Error connecting to ClickHouse: " + error.message);
+        } else {
+          toast.error("❌ Unknown error occurred");
+        }
       } finally {
         setLoading(false);
       }
@@ -65,7 +71,7 @@ const page = () => {
     fetchData();
   }, []);
 
-  const handleTableClick = async (e: any) => {
+  const handleTableClick = async (e: React.MouseEvent<HTMLButtonElement>) => {
     try {
       setToggler(true);
       const response = await fetch(
@@ -77,7 +83,7 @@ const page = () => {
           },
           body: JSON.stringify({
             db: "default",
-            query: `SELECT * FROM ${e.target.innerText}`,
+            query: `SELECT * FROM ${(e.target as HTMLButtonElement).innerText}`,
           }),
         }
       );
@@ -86,22 +92,27 @@ const page = () => {
         throw new Error("Network response was not ok");
       }
       const result = await response.json();
-      setTableData(result?.data);
+      // setTableData(result?.data);
 
       setColumns(
-        Object.keys(result?.data[0]).map((key: any, idx: any) => ({
+        Object.keys(result?.data[0]).map((key) => ({
           key: key,
           label: key,
         }))
       );
       setRows(
-        result?.data.map((item: any, idx: number) => ({
-          key: idx,
-          ...item,
-        }))
+        result?.data.map((item: unknown, idx: number) =>
+          typeof item === "object" && item !== null
+            ? { key: idx, ...item }
+            : { key: idx }
+        )
       );
-    } catch (error: any) {
-      setError(error);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Unknow message");
+      }
     } finally {
       setLoading(false);
     }
@@ -110,34 +121,44 @@ const page = () => {
   const handleExportData = () => {
     console.log(selectedKeys);
 
-    let columnArr: any;
-    const selectedArray = Array.from(selectedKeys); // ✅ convert Set to Array
+    let columnArr: string[];
+    const selectedArray = Array.from(selectedKeys as Set<unknown>);
 
     if (selectedArray.length > 0) {
-      columnArr = columns.map((col: any) => col.label);
+      columnArr = columns.map(
+        (col: { key: string; label: string }) => col.label
+      );
     } else {
-      columnArr = columns.map((col: any) => col.label);
+      columnArr = columns.map(
+        (col: { key: string; label: string }) => col.label
+      );
     }
 
     const csvHeader = columnArr.join(",") + "\n";
 
-    let csvRows: any;
+    let csvRows: unknown;
 
     if (selectedArray.length > 0) {
       console.log(rows[0], rows[1], selectedArray);
       csvRows = rows
-        .filter((row: any) => selectedArray.includes(row.key.toString()))
-        .map((row: any) =>
+        .filter((row: { key: string }) =>
+          selectedArray.includes(row.key.toString())
+        )
+        .map((row: unknown) =>
           columns
-            .map((col: any) => JSON.stringify(row[col.label] ?? ""))
+            .map((col: { key: string; label: string }) =>
+              JSON.stringify((row as Record<string, unknown>)[col.label] ?? "")
+            )
             .join(",")
         )
         .join("\n");
     } else {
       csvRows = rows
-        .map((row: any) =>
+        .map((row: unknown) =>
           columns
-            .map((col: any) => JSON.stringify(row[col.label] ?? ""))
+            .map((col: { key: string; label: string }) =>
+              JSON.stringify((row as Record<string, unknown>)[col.label] ?? "")
+            )
             .join(",")
         )
         .join("\n");
@@ -160,6 +181,7 @@ const page = () => {
 
   return (
     <div className={`flex flex-col items-center justify-center h-screen`}>
+      {error && toast("Error fetching data: " + error)}
       {loading ? (
         <Loading />
       ) : (
@@ -246,12 +268,12 @@ const page = () => {
                 }
               >
                 <TableHeader columns={columns}>
-                  {(column: any) => (
+                  {(column: { key: string; label: string }) => (
                     <TableColumn key={column.key}>{column.label}</TableColumn>
                   )}
                 </TableHeader>
                 <TableBody items={items}>
-                  {(item: any) => (
+                  {(item: { key: string | number; [key: string]: unknown }) => (
                     <TableRow key={item.key}>
                       {(columnKey) => (
                         <TableCell>{getKeyValue(item, columnKey)}</TableCell>
@@ -264,13 +286,13 @@ const page = () => {
           ) : (
             <div className="flex flex-wrap gap-4 ml-4">
               {data && data.length > 0 ? (
-                data?.map((item: any, idx: number) => (
+                data?.map((item: unknown, idx: number) => (
                   <button
                     className="p-2 border cursor-pointer rounded"
                     onClick={handleTableClick}
                     key={idx}
                   >
-                    {item}
+                    {String(item)}
                   </button>
                 ))
               ) : (
@@ -284,4 +306,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default Page;

@@ -8,7 +8,7 @@ import {
   FaTable,
 } from "react-icons/fa";
 
-const FeaturesSection = () => {
+const FeaturesSection: React.FC = () => {
   const features = [
     {
       icon: <FaFileCsv size={24} />,

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
 
-const ConnectPage = () => {
-  const [loading, setLoading] = useState(false);
+const ConnectPage: React.FC = () => {
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleDbConnection = async (
     event: React.FormEvent<HTMLFormElement>
@@ -38,9 +38,12 @@ const ConnectPage = () => {
         toast.error(`${data.message}`);
         console.error("Failed to connect to database:", data.message);
       }
-    } catch (error: any) {
-      toast.error("❌ Error connecting to ClickHouse");
-      console.error("Error connecting to database:", error.message);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error("❌ Error connecting to ClickHouse: " + error.message);
+      } else {
+        toast.error("❌ Unknown error occurred");
+      }
     } finally {
       setLoading(false);
     }
